@@ -1,8 +1,20 @@
-INFO:     Started server process [31621]
+INFO:     Shutting down
+INFO:     Waiting for application shutdown.
+INFO:     Application shutdown complete.
+INFO:     Finished server process [31621]
+INFO:     Started server process [126102]
 INFO:     Waiting for application startup.
 INFO:     Application startup complete.
 INFO:     Uvicorn running on http://0.0.0.0:8000 (Press CTRL+C to quit)
-INFO:     127.0.0.1:41832 - "GET / HTTP/1.1" 200 OK
-INFO:     127.0.0.1:41838 - "GET /health HTTP/1.1" 200 OK
-INFO:     127.0.0.1:41850 - "GET /ping HTTP/1.1" 200 OK
-INFO:     127.0.0.1:41856 - "GET /version HTTP/1.1" 200 OK
+2026-07-08 20:41:28 [INFO] vit-ai [1783543288.5947907]: Incoming request: GET /health
+2026-07-08 20:41:28 [INFO] vit-ai [1783543288.5947907]: Finished request: 200 in 0.0027s
+INFO:     127.0.0.1:53188 - "GET /health HTTP/1.1" 200 OK
+2026-07-08 20:41:28 [INFO] vit-ai [1783543288.6195664]: Incoming request: GET /api/v1/ai/status
+2026-07-08 20:41:28 [INFO] vit-ai [1783543288.6195664]: Finished request: 200 in 0.0017s
+INFO:     127.0.0.1:53198 - "GET /api/v1/ai/status HTTP/1.1" 200 OK
+2026-07-08 20:41:28 [INFO] vit-ai [1783543288.6442533]: Incoming request: GET /api/v1/ai/providers
+2026-07-08 20:41:28 [INFO] vit-ai [1783543288.6442533]: Finished request: 200 in 0.0016s
+INFO:     127.0.0.1:53202 - "GET /api/v1/ai/providers HTTP/1.1" 200 OK
+2026-07-08 20:41:28 [INFO] vit-ai [1783543288.666702]: Incoming request: GET /api/v1/models
+2026-07-08 20:41:28 [INFO] vit-ai [1783543288.666702]: Finished request: 200 in 0.0008s
+INFO:     127.0.0.1:53216 - "GET /api/v1/models HTTP/1.1" 200 OK
