@@ -1,20 +1,28 @@
 INFO:     Shutting down
 INFO:     Waiting for application shutdown.
 INFO:     Application shutdown complete.
-INFO:     Finished server process [31621]
-INFO:     Started server process [126102]
+INFO:     Finished server process [126102]
+/home/jules/.pyenv/versions/3.12.13/lib/python3.12/site-packages/pydantic/_internal/_fields.py:160: UserWarning: Field "model_key" has conflict with protected namespace "model_".
+
+You may be able to resolve this warning by setting `model_config['protected_namespaces'] = ()`.
+  warnings.warn(
+/home/jules/.pyenv/versions/3.12.13/lib/python3.12/site-packages/pydantic/_internal/_fields.py:160: UserWarning: Field "model_name" has conflict with protected namespace "model_".
+
+You may be able to resolve this warning by setting `model_config['protected_namespaces'] = ()`.
+  warnings.warn(
+/home/jules/.pyenv/versions/3.12.13/lib/python3.12/site-packages/pydantic/_internal/_fields.py:160: UserWarning: Field "model_id" has conflict with protected namespace "model_".
+
+You may be able to resolve this warning by setting `model_config['protected_namespaces'] = ()`.
+  warnings.warn(
+INFO:     Started server process [482331]
 INFO:     Waiting for application startup.
+2026-07-08 22:28:55 [INFO] vit-ai [no-id]: Initializing VIT AI Intelligence Platform...
+2026-07-08 22:28:55 [INFO] vit-ai [no-id]: Registry seeded with legacy models and features.
 INFO:     Application startup complete.
 INFO:     Uvicorn running on http://0.0.0.0:8000 (Press CTRL+C to quit)
-2026-07-08 20:41:28 [INFO] vit-ai [1783543288.5947907]: Incoming request: GET /health
-2026-07-08 20:41:28 [INFO] vit-ai [1783543288.5947907]: Finished request: 200 in 0.0027s
-INFO:     127.0.0.1:53188 - "GET /health HTTP/1.1" 200 OK
-2026-07-08 20:41:28 [INFO] vit-ai [1783543288.6195664]: Incoming request: GET /api/v1/ai/status
-2026-07-08 20:41:28 [INFO] vit-ai [1783543288.6195664]: Finished request: 200 in 0.0017s
-INFO:     127.0.0.1:53198 - "GET /api/v1/ai/status HTTP/1.1" 200 OK
-2026-07-08 20:41:28 [INFO] vit-ai [1783543288.6442533]: Incoming request: GET /api/v1/ai/providers
-2026-07-08 20:41:28 [INFO] vit-ai [1783543288.6442533]: Finished request: 200 in 0.0016s
-INFO:     127.0.0.1:53202 - "GET /api/v1/ai/providers HTTP/1.1" 200 OK
-2026-07-08 20:41:28 [INFO] vit-ai [1783543288.666702]: Incoming request: GET /api/v1/models
-2026-07-08 20:41:28 [INFO] vit-ai [1783543288.666702]: Finished request: 200 in 0.0008s
-INFO:     127.0.0.1:53216 - "GET /api/v1/models HTTP/1.1" 200 OK
+2026-07-08 22:28:58 [INFO] vit-ai [1783549738.3369079]: Incoming request: GET /api/v1/models
+2026-07-08 22:28:58 [INFO] vit-ai [1783549738.3369079]: Finished request: 200 in 0.0023s
+INFO:     127.0.0.1:41374 - "GET /api/v1/models HTTP/1.1" 200 OK
+2026-07-08 22:28:58 [INFO] vit-ai [1783549738.3611608]: Incoming request: GET /api/v1/features
+2026-07-08 22:28:58 [INFO] vit-ai [1783549738.3611608]: Finished request: 200 in 0.0038s
+INFO:     127.0.0.1:41376 - "GET /api/v1/features HTTP/1.1" 200 OK

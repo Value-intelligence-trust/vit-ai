@@ -1,19 +1,18 @@
 from pydantic import BaseModel, Field
 from datetime import datetime, UTC
-from typing import Optional, Dict, Any
+from typing import Optional, Dict, Any, List
 
-class DatasetBase(BaseModel):
+class FeatureBase(BaseModel):
     id: str
     name: str
-    version: str
+    type: str  # numeric, categorical, text, etc.
     description: str
-    checksum: str
     metadata: Optional[Dict[str, Any]] = None
 
-class DatasetCreate(DatasetBase):
+class FeatureCreate(FeatureBase):
     pass
 
-class Dataset(DatasetBase):
+class Feature(FeatureBase):
     created_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
     updated_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
 
