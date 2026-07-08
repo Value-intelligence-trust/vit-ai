@@ -1,0 +1,12 @@
+services:
+  - type: web
+    name: vit-ai
+    env: docker
+    plan: free
+    region: oregon
+    healthCheckPath: /health
+    envVars:
+      - key: APP_VERSION
+        value: 0.1.0
+      - key: PORT
+        value: 8000
