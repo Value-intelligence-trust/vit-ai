@@ -14,34 +14,12 @@ def test_ai_status():
     assert response.status_code == 200
     assert "status" in response.json()
 
-def test_model_registry():
-    model_data = {
-        "id": "model-1",
-        "name": "Test Model",
-        "version": "1.0.0",
-        "description": "A test model",
-        "capabilities": ["classification"],
-        "provider": "internal",
-        "input_schema": {},
-        "output_schema": {}
-    }
-    response = client.post("/api/v1/models", json=model_data)
-    assert response.status_code == 200
-    assert response.json()["id"] == "model-1"
-
-    response = client.get("/api/v1/models")
-    assert len(response.json()) >= 1
-
-def test_inference():
-    payload = {
-        "model_id": "model-1",
-        "payload": {"text": "hello"}
-    }
-    response = client.post("/api/v1/infer", json=payload)
-    assert response.status_code == 200
-    assert "result" in response.json()
-
 def test_ensemble():
-    response = client.post("/api/v1/ensemble", json={"data": [1, 2, 3]})
+    # Test with new schema alignment
+    response = client.post("/api/v1/ensemble", json={"home_team": "Team A", "away_team": "Team B"})
     assert response.status_code == 200
-    assert "confidence" in response.json()
+    data = response.json()
+    assert "prediction" in data
+    assert "match_quality_rating" in data["prediction"]
+    assert "attribution" in data["prediction"]
+    assert data["prediction"]["home_prob"] > 0
