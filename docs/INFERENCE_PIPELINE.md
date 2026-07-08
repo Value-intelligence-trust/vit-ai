@@ -1,16 +1,13 @@
-# Inference Pipeline
+# Inference & Embedding Pipeline
 
 The Inference Pipeline orchestrates the execution of AI models.
 
 ## Support Operations
-- **General Inference**: `/infer`
-- **Prediction**: `/predict`
-- **Chat/LLM**: `/chat`
-- **Classification**: `/classify`
-- **Summarization**: `/summarize`
-- **Embeddings**: `/embed`
+- **General Inference**: `/api/v1/infer`
+- **Embedding Service**: `/api/v1/embed` - Returns vector representations.
+- **Ensemble Inference**: `/api/v1/ensemble` - Executes multi-model consensus.
 
 ## Features
-- Synchronous and asynchronous execution.
-- Request/Response validation via Pydantic.
-- Latency tracking and metadata logging.
+- **Provider Abstraction**: Decouples model logic from the API.
+- **Extracted Math Utilities**: Uses standardized math helpers (`app/utils/math.py`) for consistent predictions.
+- **Latency Tracking**: Every response includes processing latency and metadata.

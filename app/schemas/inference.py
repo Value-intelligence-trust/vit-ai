@@ -1,4 +1,4 @@
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, ConfigDict
 from typing import Dict, Any, Optional, List
 
 class ConfidenceIntervals(BaseModel):
@@ -24,11 +24,15 @@ class Attribution(BaseModel):
     draw_prob: float
     away_prob: float
 
+    model_config = ConfigDict(protected_namespaces=())
+
 class InferenceRequest(BaseModel):
     model_id: str
     payload: Dict[str, Any]
     async_mode: bool = False
     timeout: Optional[int] = 30
+
+    model_config = ConfigDict(protected_namespaces=())
 
 class EnsemblePrediction(BaseModel):
     home_prob: float
@@ -49,3 +53,22 @@ class InferenceResponse(BaseModel):
     latency: float
     metadata: Optional[Dict[str, Any]] = None
     prediction_details: Optional[EnsemblePrediction] = None
+
+    model_config = ConfigDict(protected_namespaces=())
+
+class PredictionResponse(InferenceResponse):
+    prediction: float
+    confidence: float
+
+class ChatResponse(InferenceResponse):
+    response: str
+
+class ClassificationResponse(InferenceResponse):
+    label: str
+    score: float
+
+class SummaryResponse(InferenceResponse):
+    summary: str
+
+class EmbeddingResponse(InferenceResponse):
+    embedding: List[float]

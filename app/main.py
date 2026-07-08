@@ -1,9 +1,11 @@
 import os
 import logging
 import time
+from contextlib import asynccontextmanager
 from fastapi import FastAPI, Request
 from app.api.endpoints import router as api_router
 from app.core.config import settings
+from app.utils.seed_registry import seed_models, seed_features
 from prometheus_client import make_asgi_app, Counter, Histogram
 
 # Configure logging
@@ -22,10 +24,22 @@ class RequestIdFilter(logging.Filter):
 
 logger.addFilter(RequestIdFilter())
 
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # Startup
+    logger.info("Initializing VIT AI Intelligence Platform...")
+    seed_models()
+    seed_features()
+    logger.info("Registry seeded with legacy models and features.")
+    yield
+    # Shutdown
+    logger.info("Shutting down VIT AI Intelligence Platform...")
+
 app = FastAPI(
     title=settings.PROJECT_NAME,
     version=settings.VERSION,
     description="VIT Network AI/ML Platform",
+    lifespan=lifespan
 )
 
 # Prometheus metrics
