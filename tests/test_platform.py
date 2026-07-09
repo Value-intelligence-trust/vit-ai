@@ -64,3 +64,55 @@ def test_training_jobs():
 
     response = client.get(f"/api/v1/training/jobs/{job_id}")
     assert response.json()["status"] == "queued"
+
+@pytest.mark.asyncio
+async def test_standardized_model_and_providers_interfaces():
+    from app.services.base_model import StandardizedModel
+    from app.services.providers import InternalProvider, AdHocProvider, EnsembleProvider
+    from app.services.ensemble import ensemble_engine
+
+    # 1. Test Model Interface
+    model = StandardizedModel(model_id="test-model", model_version="1.2.3", storage_id="s3://test")
+    assert model.health_check() is False
+    assert model.validate({"x": 1}) is True
+    assert model.version() == "1.2.3"
+    assert model.metadata()["model_id"] == "test-model"
+
+    assert model.load() is True
+    assert model.health_check() is True
+
+    pred = model.predict({"input": "test"})
+    assert pred["status"] == "success"
+    assert "prediction" in pred
+
+    batch_preds = model.batch_predict([{"input": "a"}, {"input": "b"}])
+    assert len(batch_preds) == 2
+
+    explanation = model.explain({"input": "test"})
+    assert "confidence" in explanation
+    assert "feature_importance" in explanation
+
+    assert model.unload() is True
+    assert model.health_check() is False
+
+    # 2. Test Provider Interface
+    internal_prov = InternalProvider()
+    assert await internal_prov.initialize() is True
+    assert await internal_prov.authenticate() is True
+    assert await internal_prov.shutdown() is True
+    met = await internal_prov.metrics()
+    assert met["provider_type"] == "internal"
+
+    adhoc_prov = AdHocProvider()
+    assert await adhoc_prov.initialize() is True
+    assert await adhoc_prov.authenticate() is True
+    assert await adhoc_prov.shutdown() is True
+    met_adhoc = await adhoc_prov.metrics()
+    assert met_adhoc["provider_type"] == "adhoc"
+
+    ensemble_prov = EnsembleProvider(ensemble_engine)
+    assert await ensemble_prov.initialize() is True
+    assert await ensemble_prov.authenticate() is True
+    assert await ensemble_prov.shutdown() is True
+    met_ens = await ensemble_prov.metrics()
+    assert met_ens["provider_type"] == "ensemble"

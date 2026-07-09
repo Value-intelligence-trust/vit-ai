@@ -1,5 +1,6 @@
 from typing import List, Dict, Optional, Any
 from app.schemas.model import Model, ModelCreate, ModelUpdate, ModelVersion, ModelVersionCreate
+from app.services.base_model import StandardizedModel
 from datetime import datetime, UTC
 import logging
 
@@ -8,7 +9,7 @@ logger = logging.getLogger(__name__)
 class ModelRegistry:
     def __init__(self):
         self.models: Dict[str, Model] = {}
-        self.loaded_artifacts: Dict[str, Any] = {} # In-memory model artifacts
+        self.loaded_artifacts: Dict[str, StandardizedModel] = {} # In-memory model artifacts
 
     def register(self, model_in: ModelCreate) -> Model:
         version = ModelVersion(
@@ -24,19 +25,23 @@ class ModelRegistry:
         )
         self.models[model.id] = model
 
-        # Trigger background load if storage_id is present
-        if model_in.storage_id:
-            self.load_model_artifact(model.id, version.version, version.storage_id)
+        # Load standard model artifact
+        storage_id = model_in.storage_id or f"local://models/{model.id}"
+        self.load_model_artifact(model.id, version.version, storage_id)
 
         return model
 
     def load_model_artifact(self, model_id: str, version: str, storage_id: str):
-        # Mocking model loading. In production, this would download from vit-storage
-        # and use joblib.load() or similar.
         logger.info(f"Loading model artifact for {model_id} v{version} from {storage_id}")
-        self.loaded_artifacts[f"{model_id}:{version}"] = {"mock": "artifact"}
+        artifact = StandardizedModel(
+            model_id=model_id,
+            model_version=version,
+            storage_id=storage_id
+        )
+        artifact.load()
+        self.loaded_artifacts[f"{model_id}:{version}"] = artifact
 
-    def get_artifact(self, model_id: str, version: str) -> Optional[Any]:
+    def get_artifact(self, model_id: str, version: str) -> Optional[StandardizedModel]:
         return self.loaded_artifacts.get(f"{model_id}:{version}")
 
     def get_all(self) -> List[Model]:
@@ -53,8 +58,8 @@ class ModelRegistry:
         model.versions.append(version)
         model.updated_at = datetime.now(datetime.UTC)
 
-        if version.storage_id:
-            self.load_model_artifact(model_id, version.version, version.storage_id)
+        storage_id = version.storage_id or f"local://models/{model_id}-{version.version}"
+        self.load_model_artifact(model_id, version.version, storage_id)
 
         return version
 
@@ -72,9 +77,10 @@ class ModelRegistry:
         if model_id in self.models:
             del self.models[model_id]
             if f"{model_id}:" in "".join(self.loaded_artifacts.keys()):
-                # Simplified cleanup
                 keys_to_del = [k for k in self.loaded_artifacts.keys() if k.startswith(f"{model_id}:")]
-                for k in keys_to_del: del self.loaded_artifacts[k]
+                for k in keys_to_del:
+                    self.loaded_artifacts[k].unload()
+                    del self.loaded_artifacts[k]
             return True
         return False
 
