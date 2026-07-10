@@ -3,6 +3,7 @@ import logging
 import time
 from contextlib import asynccontextmanager
 from fastapi import FastAPI, Request
+from fastapi.middleware.cors import CORSMiddleware
 from app.api.endpoints import router as api_router
 from app.core.config import settings
 from app.utils.seed_registry import seed_models, seed_features
@@ -40,6 +41,15 @@ app = FastAPI(
     version=settings.VERSION,
     description="VIT Network AI/ML Platform",
     lifespan=lifespan
+)
+
+# CORS — allow browser clients from any origin
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
 )
 
 # Prometheus metrics
