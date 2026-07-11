@@ -11,6 +11,6 @@ python-multipart==0.0.9
 apscheduler==3.10.4
 scikit-learn==1.5.0
 xgboost==2.0.3
-joblib==1.4.2
+joblib==1.5.3
 numpy==1.26.4
 pandas==2.2.2
