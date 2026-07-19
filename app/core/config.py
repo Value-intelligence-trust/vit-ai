@@ -1,44 +1,29 @@
 import os
-from pydantic_settings import BaseSettings
-from typing import List, Dict, Any
+    from pydantic_settings import BaseSettings
 
-class Settings(BaseSettings):
-    PROJECT_NAME: str = "VIT-AI"
-    VERSION: str = "0.1.0"
-    API_V1_STR: str = "/api/v1"
 
-    # Security
-    SECRET_KEY: str = os.getenv("SECRET_KEY", "supersecret")
-    ACCESS_TOKEN_EXPIRE_MINUTES: int = 60 * 24 * 8  # 8 days
-    INTERNAL_API_KEY: str = os.getenv("INTERNAL_API_KEY", "vit-internal-key")
+    class Settings(BaseSettings):
+      APP_VERSION: str = os.getenv("APP_VERSION", "0.1.0")
+      PORT: int = int(os.getenv("PORT", "8000"))
+      LOG_LEVEL: str = os.getenv("LOG_LEVEL", "INFO")
 
-    # Service Discovery
-    VIT_STORAGE_URL: str = os.getenv("VIT_STORAGE_URL", "http://vit-storage-svc:8000")
-    VIT_NETWORK_URL: str = os.getenv("VIT_NETWORK_URL", "http://vit-network-rpc:8000")
+      # Model storage
+      MODEL_DIR: str = os.getenv("MODEL_DIR", "/app/models")
 
-    # AI Config
-    DEFAULT_PROVIDER: str = "internal"
-    SUPPORTED_PROVIDERS: List[str] = ["internal", "ensemble"]
+      # vit-storage integration
+      VIT_STORAGE_URL: str = os.getenv("VIT_STORAGE_URL", "https://vit-storage-4trt.onrender.com")
 
-    # Production Hardware / Execution settings (Phase 5: Configuration)
-    GPU_ENABLED: bool = os.getenv("GPU_ENABLED", "false").lower() == "true"
-    CPU_FALLBACK: bool = os.getenv("CPU_FALLBACK", "true").lower() == "true"
+      # Internal service auth
+      VIT_AI_API_KEY: str = os.getenv("VIT_AI_API_KEY", "")
 
-    # Timeout & Retry Policies
-    API_TIMEOUT_SECONDS: int = int(os.getenv("API_TIMEOUT_SECONDS", "30"))
-    MAX_RETRIES: int = int(os.getenv("MAX_RETRIES", "3"))
+      # Base L2 oracle
+      ORACLE_PRIVATE_KEY: str = os.getenv("ORACLE_PRIVATE_KEY", "")
+      UNIVERSAL_ORACLE_ADDRESS: str = os.getenv("UNIVERSAL_ORACLE_ADDRESS", "")
 
-    # Cache Configuration
-    CACHE_ENABLED: bool = os.getenv("CACHE_ENABLED", "true").lower() == "true"
-    CACHE_TTL_SECONDS: int = int(os.getenv("CACHE_TTL_SECONDS", "300"))
+      class Config:
+          env_file = ".env"
+          extra = "ignore"
 
-    # Mock Credentials / API Keys
-    PROVIDER_CREDENTIALS: Dict[str, str] = {
-        "openai_api_key": os.getenv("OPENAI_API_KEY", "mock-openai-key"),
-        "anthropic_api_key": os.getenv("ANTHROPIC_API_KEY", "mock-claud-key")
-    }
 
-    class Config:
-        case_sensitive = True
-
-settings = Settings()
+    settings = Settings()
+    
