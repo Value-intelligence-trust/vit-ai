@@ -1,12 +1,25 @@
 services:
-  - type: web
-    name: vit-ai
-    env: docker
-    plan: free
-    region: oregon
-    healthCheckPath: /health
-    envVars:
-      - key: APP_VERSION
-        value: 0.1.0
-      - key: PORT
-        value: 8000
+    - type: web
+      name: vit-ai
+      env: docker
+      plan: free
+      region: oregon
+      healthCheckPath: /health
+      envVars:
+        - key: APP_VERSION
+          value: 0.1.0
+        - key: PORT
+          value: 8000
+        - key: LOG_LEVEL
+          value: INFO
+        - key: MODEL_DIR
+          value: /app/models
+        - key: VIT_STORAGE_URL
+          value: https://vit-storage-4trt.onrender.com
+        - key: VIT_AI_API_KEY
+          sync: false
+        - key: ORACLE_PRIVATE_KEY
+          sync: false
+        - key: UNIVERSAL_ORACLE_ADDRESS
+          sync: false
+    

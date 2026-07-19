@@ -1,102 +1,91 @@
-import os
 import logging
-import time
-from contextlib import asynccontextmanager
-from fastapi import FastAPI, Request
-from fastapi.middleware.cors import CORSMiddleware
-from app.api.endpoints import router as api_router
-from app.core.config import settings
-from app.utils.seed_registry import seed_models, seed_features
-from prometheus_client import make_asgi_app, Counter, Histogram
+    import os
+    from contextlib import asynccontextmanager
 
-# Configure logging
-logging.basicConfig(
-    level=logging.INFO,
-    format="%(asctime)s [%(levelname)s] %(name)s [%(request_id)s]: %(message)s",
-    datefmt="%Y-%m-%d %H:%M:%S",
-)
-logger = logging.getLogger("vit-ai")
+    from fastapi import FastAPI
+    from fastapi.middleware.cors import CORSMiddleware
 
-# Custom logging filter for request_id
-class RequestIdFilter(logging.Filter):
-    def filter(self, record):
-        record.request_id = getattr(record, 'request_id', 'no-id')
-        return True
+    from app.api.endpoints import router
+    from app.core.config import settings
+    from app.services.registry import ModelRegistry
 
-logger.addFilter(RequestIdFilter())
+    logging.basicConfig(
+      level=getattr(logging, settings.LOG_LEVEL.upper(), logging.INFO),
+      format="%(asctime)s %(levelname)s %(name)s — %(message)s",
+    )
+    logger = logging.getLogger("vit-ai")
 
-@asynccontextmanager
-async def lifespan(app: FastAPI):
-    # Startup
-    logger.info("Initializing VIT AI Intelligence Platform...")
-    seed_models()
-    seed_features()
-    logger.info("Registry seeded with legacy models and features.")
-    yield
-    # Shutdown
-    logger.info("Shutting down VIT AI Intelligence Platform...")
+    # Process-wide singleton registry
+    _registry: ModelRegistry = None
 
-app = FastAPI(
-    title=settings.PROJECT_NAME,
-    version=settings.VERSION,
-    description="VIT Network AI/ML Platform",
-    lifespan=lifespan
-)
 
-# CORS — allow browser clients from any origin
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
+    def get_registry() -> ModelRegistry:
+      """Return the process-wide ModelRegistry singleton."""
+      return _registry
 
-# Prometheus metrics
-metrics_app = make_asgi_app()
-app.mount("/metrics", metrics_app)
 
-REQUEST_COUNT = Counter("http_requests_total", "Total HTTP requests", ["method", "endpoint", "http_status"])
-REQUEST_LATENCY = Histogram("http_request_latency_seconds", "HTTP request latency", ["endpoint"])
+    @asynccontextmanager
+    async def lifespan(app: FastAPI):
+      global _registry
 
-@app.middleware("http")
-async def add_process_time_header(request: Request, call_next):
-    request_id = request.headers.get("X-Request-ID", str(time.time()))
-    start_time = time.time()
+      logger.info("VIT AI Service v%s starting up…", settings.APP_VERSION)
+      logger.info("MODEL_DIR=%s  VIT_STORAGE_URL=%s", settings.MODEL_DIR, settings.VIT_STORAGE_URL)
 
-    # Inject request_id into logger
-    extra = {"request_id": request_id}
-    logger.info(f"Incoming request: {request.method} {request.url.path}", extra=extra)
+      _registry = ModelRegistry()
 
-    response = await call_next(request)
+      # Bootstrap and load all 13+ VIT ensemble models from MODEL_DIR
+      loaded = _registry.bootstrap_vit_models()
+      app.state.models_loaded = loaded
 
-    process_time = time.time() - start_time
-    response.headers["X-Process-Time"] = str(process_time)
-    response.headers["X-Request-ID"] = request_id
+      if loaded == 0:
+          logger.warning(
+              "⚠  DEGRADED: 0 models loaded. Inference endpoints will raise errors until "
+              "MODEL_DIR is set correctly and .pkl files are bundled in the Docker image. "
+              "Rebuild with: COPY models /app/models in Dockerfile."
+          )
+      else:
+          logger.info("✓  %d models ready. VIT AI Service is OPERATIONAL.", loaded)
 
-    REQUEST_COUNT.labels(method=request.method, endpoint=request.url.path, http_status=response.status_code).inc()
-    REQUEST_LATENCY.labels(endpoint=request.url.path).observe(process_time)
+      yield
 
-    logger.info(f"Finished request: {response.status_code} in {process_time:.4f}s", extra=extra)
-    return response
+      logger.info("VIT AI Service shutting down.")
 
-# Standard endpoints
-@app.get("/health")
-async def health():
-    return {"status": "healthy"}
 
-@app.get("/ping")
-async def ping():
-    return "pong"
+    app = FastAPI(
+      title="VIT AI Service",
+      description="13-model ensemble powering the VIT Intelligence Oracle",
+      version=settings.APP_VERSION,
+      lifespan=lifespan,
+    )
 
-@app.get("/version")
-async def version():
-    return {"version": settings.VERSION}
+    app.add_middleware(
+      CORSMiddleware,
+      allow_origins=["*"],
+      allow_credentials=True,
+      allow_methods=["*"],
+      allow_headers=["*"],
+    )
 
-# API V1
-app.include_router(api_router, prefix=settings.API_V1_STR)
+    app.include_router(router)
 
-if __name__ == "__main__":
-    import uvicorn
-    port = int(os.getenv("PORT", 8000))
-    uvicorn.run(app, host="0.0.0.0", port=port)
+
+    @app.get("/ping")
+    async def ping():
+      return {"status": "ok", "service": "vit-ai"}
+
+
+    @app.get("/health")
+    async def health():
+      loaded = getattr(app.state, "models_loaded", 0)
+      status = "healthy" if loaded > 0 else "degraded"
+      return {
+          "status": status,
+          "version": settings.APP_VERSION,
+          "models_loaded": loaded,
+      }
+
+
+    @app.get("/version")
+    async def version():
+      return {"version": settings.APP_VERSION}
+    

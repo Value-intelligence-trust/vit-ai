@@ -1,44 +1,68 @@
-import os
-from pydantic_settings import BaseSettings
-from typing import List, Dict, Any
+"""
+VIT-AI service configuration.
+All values are loaded from environment variables via pydantic-settings.
+No hardcoded URLs or credentials are permitted per VIT Chain engineering directive.
+"""
+import sys
+import logging
+from pydantic import field_validator
+from pydantic_settings import BaseSettings, SettingsConfigDict
+
+logger = logging.getLogger(__name__)
+
 
 class Settings(BaseSettings):
-    PROJECT_NAME: str = "VIT-AI"
-    VERSION: str = "0.1.0"
-    API_V1_STR: str = "/api/v1"
+    model_config = SettingsConfigDict(
+        env_file=".env",
+        env_file_encoding="utf-8",
+        extra="ignore",
+    )
 
-    # Security
-    SECRET_KEY: str = os.getenv("SECRET_KEY", "supersecret")
-    ACCESS_TOKEN_EXPIRE_MINUTES: int = 60 * 24 * 8  # 8 days
-    INTERNAL_API_KEY: str = os.getenv("INTERNAL_API_KEY", "vit-internal-key")
+    # ── Runtime ───────────────────────────────────────────────────────────
+    APP_VERSION: str = "0.1.0"
+    PORT: int = 8000
+    LOG_LEVEL: str = "INFO"
 
-    # Service Discovery
-    VIT_STORAGE_URL: str = os.getenv("VIT_STORAGE_URL", "http://vit-storage-svc:8000")
-    VIT_NETWORK_URL: str = os.getenv("VIT_NETWORK_URL", "http://vit-network-rpc:8000")
+    # ── Model storage ─────────────────────────────────────────────────────
+    MODEL_DIR: str = "/app/models"
 
-    # AI Config
-    DEFAULT_PROVIDER: str = "internal"
-    SUPPORTED_PROVIDERS: List[str] = ["internal", "ensemble"]
+    # ── vit-storage integration ───────────────────────────────────────────
+    # Required — no default URL; set VIT_STORAGE_URL in environment explicitly.
+    VIT_STORAGE_URL: str
 
-    # Production Hardware / Execution settings (Phase 5: Configuration)
-    GPU_ENABLED: bool = os.getenv("GPU_ENABLED", "false").lower() == "true"
-    CPU_FALLBACK: bool = os.getenv("CPU_FALLBACK", "true").lower() == "true"
+    # ── Internal service authentication ───────────────────────────────────
+    # Required — inter-service API key; service refuses to start without it.
+    VIT_AI_API_KEY: str
 
-    # Timeout & Retry Policies
-    API_TIMEOUT_SECONDS: int = int(os.getenv("API_TIMEOUT_SECONDS", "30"))
-    MAX_RETRIES: int = int(os.getenv("MAX_RETRIES", "3"))
+    # ── VIT Chain oracle (Chain ID 7764) ──────────────────────────────────
+    # Required — used for on-chain oracle settlement; startup aborts if missing.
+    ORACLE_PRIVATE_KEY: str
+    UNIVERSAL_ORACLE_ADDRESS: str
 
-    # Cache Configuration
-    CACHE_ENABLED: bool = os.getenv("CACHE_ENABLED", "true").lower() == "true"
-    CACHE_TTL_SECONDS: int = int(os.getenv("CACHE_TTL_SECONDS", "300"))
+    @field_validator(
+        "VIT_STORAGE_URL",
+        "VIT_AI_API_KEY",
+        "ORACLE_PRIVATE_KEY",
+        "UNIVERSAL_ORACLE_ADDRESS",
+        mode="before",
+    )
+    @classmethod
+    def _require_non_empty(cls, v: str, info) -> str:
+        if not v or not str(v).strip():
+            raise ValueError(
+                f"{info.field_name} must be set via environment variable — "
+                "empty or missing values are not permitted in any environment."
+            )
+        return v
 
-    # Mock Credentials / API Keys
-    PROVIDER_CREDENTIALS: Dict[str, str] = {
-        "openai_api_key": os.getenv("OPENAI_API_KEY", "mock-openai-key"),
-        "anthropic_api_key": os.getenv("ANTHROPIC_API_KEY", "mock-claud-key")
-    }
 
-    class Config:
-        case_sensitive = True
+def _build_settings() -> Settings:
+    """Construct settings, aborting startup on missing required variables."""
+    try:
+        return Settings()
+    except Exception as exc:
+        logger.critical("[config] Startup aborted — missing required env var: %s", exc)
+        sys.exit(1)
 
-settings = Settings()
+
+settings = _build_settings()

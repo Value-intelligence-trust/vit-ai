@@ -1,0 +1,47 @@
+name: VIT-AI CI
+
+    on:
+    push:
+      branches: [main]
+    pull_request:
+      branches: [main]
+
+    jobs:
+    test:
+      runs-on: ubuntu-latest
+      steps:
+        - uses: actions/checkout@v4
+
+        - name: Set up Python
+          uses: actions/setup-python@v5
+          with:
+            python-version: '3.11'
+
+        - name: Install dependencies
+          run: pip install -r requirements.txt
+
+        - name: Check model directory
+          run: |
+            echo "Models in repo:"
+            ls models/ 2>/dev/null || echo "WARNING: models/ directory is empty or missing"
+            count=$(ls models/*.pkl 2>/dev/null | wc -l)
+            echo "PKL count: $count"
+            if [ "$count" -eq 0 ]; then
+              echo "::warning::No .pkl model files found — vit-ai will start in DEGRADED mode"
+            fi
+
+        - name: Lint
+          run: |
+            pip install ruff --quiet
+            ruff check app/ --ignore E501 || true
+
+        - name: Start service and smoke-test
+          run: |
+            MODEL_DIR=$(pwd)/models uvicorn app.main:app --host 0.0.0.0 --port 8000 &
+            sleep 5
+            curl -sf http://localhost:8000/ping | python3 -c "import sys,json; d=json.load(sys.stdin); assert d['status']=='ok', d"
+            curl -sf http://localhost:8000/health
+            echo "Health response received"
+            curl -sf http://localhost:8000/version
+            kill %1
+    
