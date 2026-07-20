@@ -4,7 +4,7 @@ All values are loaded from environment variables via pydantic-settings.
 No hardcoded URLs or credentials are permitted per VIT Chain engineering directive.
 """
 import logging
-from typing import Optional
+from typing import Optional, List
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 logger = logging.getLogger(__name__)
@@ -19,19 +19,29 @@ class Settings(BaseSettings):
 
     # ── Runtime ───────────────────────────────────────────────────────────
     APP_VERSION: str = "0.1.0"
+    VERSION: str = "0.1.0"          # alias used by AIKernel.get_status()
     PORT: int = 8000
     LOG_LEVEL: str = "INFO"
 
     # ── Model storage ─────────────────────────────────────────────────────
     MODEL_DIR: str = "/app/models"
 
+    # ── AI kernel providers ───────────────────────────────────────────────
+    # Used by AIKernel.__init__ at module level — must have a safe default.
+    SUPPORTED_PROVIDERS: List[str] = ["internal", "ensemble", "adhoc"]
+
+    # ── Auth / JWT ────────────────────────────────────────────────────────
+    # Secret key for JWT signing.  Override in production.
+    SECRET_KEY: str = "vit-ai-default-secret-change-in-prod"
+    ACCESS_TOKEN_EXPIRE_MINUTES: int = 30
+
     # ── vit-storage integration ───────────────────────────────────────────
-    # Defaults to None when unset; inference routes degrade gracefully.
+    # Defaults to None when unset; storage routes degrade gracefully.
     VIT_STORAGE_URL: Optional[str] = None
 
     # ── Internal service authentication ───────────────────────────────────
-    # Optional at startup — service starts degraded, auth middleware rejects
-    # requests when the key is absent rather than preventing boot.
+    # Optional at startup — auth middleware returns 401 when the key is absent
+    # rather than preventing boot.
     VIT_AI_API_KEY: Optional[str] = None
 
     # ── VIT Chain oracle (Chain ID 7764) ──────────────────────────────────
@@ -46,29 +56,32 @@ def _build_settings() -> Settings:
         s = Settings()
     except Exception as exc:
         logger.critical("[config] Settings load error — using minimal defaults: %s", exc)
-        # Return a minimal settings object so uvicorn can still bind and /ping responds
         s = Settings.model_construct(
             APP_VERSION="0.1.0",
+            VERSION="0.1.0",
             PORT=8000,
             LOG_LEVEL="INFO",
             MODEL_DIR="/app/models",
+            SUPPORTED_PROVIDERS=["internal", "ensemble", "adhoc"],
+            SECRET_KEY="vit-ai-default-secret-change-in-prod",
+            ACCESS_TOKEN_EXPIRE_MINUTES=30,
             VIT_STORAGE_URL=None,
             VIT_AI_API_KEY=None,
             ORACLE_PRIVATE_KEY=None,
             UNIVERSAL_ORACLE_ADDRESS=None,
         )
 
-    # Warn about missing values — never abort
-    _RECOMMENDED = {
+    # Warn about missing optional production values — never abort
+    _OPTIONAL_PROD = {
         "VIT_STORAGE_URL": s.VIT_STORAGE_URL,
         "VIT_AI_API_KEY": s.VIT_AI_API_KEY,
         "ORACLE_PRIVATE_KEY": s.ORACLE_PRIVATE_KEY,
         "UNIVERSAL_ORACLE_ADDRESS": s.UNIVERSAL_ORACLE_ADDRESS,
     }
-    missing = [k for k, v in _RECOMMENDED.items() if not v]
+    missing = [k for k, v in _OPTIONAL_PROD.items() if not v]
     if missing:
         logger.warning(
-            "[config] DEGRADED — the following env vars are not set: %s. "
+            "[config] DEGRADED — env vars not set: %s. "
             "Service starts in degraded mode; affected features will raise errors.",
             ", ".join(missing),
         )
