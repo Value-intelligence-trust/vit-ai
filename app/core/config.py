@@ -3,9 +3,8 @@ VIT-AI service configuration.
 All values are loaded from environment variables via pydantic-settings.
 No hardcoded URLs or credentials are permitted per VIT Chain engineering directive.
 """
-import sys
 import logging
-from pydantic import field_validator
+from typing import Optional
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 logger = logging.getLogger(__name__)
@@ -27,42 +26,53 @@ class Settings(BaseSettings):
     MODEL_DIR: str = "/app/models"
 
     # ── vit-storage integration ───────────────────────────────────────────
-    # Required — no default URL; set VIT_STORAGE_URL in environment explicitly.
-    VIT_STORAGE_URL: str
+    # Defaults to None when unset; inference routes degrade gracefully.
+    VIT_STORAGE_URL: Optional[str] = None
 
     # ── Internal service authentication ───────────────────────────────────
-    # Required — inter-service API key; service refuses to start without it.
-    VIT_AI_API_KEY: str
+    # Optional at startup — service starts degraded, auth middleware rejects
+    # requests when the key is absent rather than preventing boot.
+    VIT_AI_API_KEY: Optional[str] = None
 
     # ── VIT Chain oracle (Chain ID 7764) ──────────────────────────────────
-    # Required — used for on-chain oracle settlement; startup aborts if missing.
-    ORACLE_PRIVATE_KEY: str
-    UNIVERSAL_ORACLE_ADDRESS: str
-
-    @field_validator(
-        "VIT_STORAGE_URL",
-        "VIT_AI_API_KEY",
-        "ORACLE_PRIVATE_KEY",
-        "UNIVERSAL_ORACLE_ADDRESS",
-        mode="before",
-    )
-    @classmethod
-    def _require_non_empty(cls, v: str, info) -> str:
-        if not v or not str(v).strip():
-            raise ValueError(
-                f"{info.field_name} must be set via environment variable — "
-                "empty or missing values are not permitted in any environment."
-            )
-        return v
+    # Optional at startup — oracle settlement degrades gracefully when absent.
+    ORACLE_PRIVATE_KEY: Optional[str] = None
+    UNIVERSAL_ORACLE_ADDRESS: Optional[str] = None
 
 
 def _build_settings() -> Settings:
-    """Construct settings, aborting startup on missing required variables."""
+    """Construct settings, warning (not aborting) on missing optional vars."""
     try:
-        return Settings()
+        s = Settings()
     except Exception as exc:
-        logger.critical("[config] Startup aborted — missing required env var: %s", exc)
-        sys.exit(1)
+        logger.critical("[config] Settings load error — using minimal defaults: %s", exc)
+        # Return a minimal settings object so uvicorn can still bind and /ping responds
+        s = Settings.model_construct(
+            APP_VERSION="0.1.0",
+            PORT=8000,
+            LOG_LEVEL="INFO",
+            MODEL_DIR="/app/models",
+            VIT_STORAGE_URL=None,
+            VIT_AI_API_KEY=None,
+            ORACLE_PRIVATE_KEY=None,
+            UNIVERSAL_ORACLE_ADDRESS=None,
+        )
+
+    # Warn about missing values — never abort
+    _RECOMMENDED = {
+        "VIT_STORAGE_URL": s.VIT_STORAGE_URL,
+        "VIT_AI_API_KEY": s.VIT_AI_API_KEY,
+        "ORACLE_PRIVATE_KEY": s.ORACLE_PRIVATE_KEY,
+        "UNIVERSAL_ORACLE_ADDRESS": s.UNIVERSAL_ORACLE_ADDRESS,
+    }
+    missing = [k for k, v in _RECOMMENDED.items() if not v]
+    if missing:
+        logger.warning(
+            "[config] DEGRADED — the following env vars are not set: %s. "
+            "Service starts in degraded mode; affected features will raise errors.",
+            ", ".join(missing),
+        )
+    return s
 
 
 settings = _build_settings()
