@@ -110,3 +110,6 @@ class ModelRegistry:
               del self.loaded_artifacts[k]
           return True
       return False
+
+# Module-level singleton — imported as 'from app.services.registry import registry'
+registry = ModelRegistry()
