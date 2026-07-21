@@ -1,54 +1,56 @@
 # ── Build stage ──────────────────────────────────────────────────────────────
-    FROM python:3.12-slim AS builder
+FROM python:3.12-slim AS builder
 
-    WORKDIR /app
+WORKDIR /app
 
-    RUN apt-get update && apt-get install -y --no-install-recommends \
-      build-essential \
-      && rm -rf /var/lib/apt/lists/*
+RUN apt-get update && apt-get install -y --no-install-recommends \
+  build-essential \
+  && rm -rf /var/lib/apt/lists/*
 
-    COPY requirements.txt .
-    RUN pip install --no-cache-dir --upgrade pip && \
-      pip install --no-cache-dir --prefer-binary -r requirements.txt
+COPY requirements.txt .
+RUN pip install --no-cache-dir --upgrade pip && \
+  pip install --no-cache-dir --prefer-binary -r requirements.txt
 
-    # Seed model artifacts at build time
-    COPY scripts/seed_models.py ./scripts/seed_models.py
-    RUN mkdir -p /app/models && MODEL_DIR=/app/models python scripts/seed_models.py
+# Seed model artifacts at build time from the seed script
+COPY scripts/seed_models.py ./scripts/seed_models.py
+RUN mkdir -p /app/models && MODEL_DIR=/app/models python scripts/seed_models.py
 
-    # ── Final stage ───────────────────────────────────────────────────────────────
-    FROM python:3.12-slim
+# ── Final stage ───────────────────────────────────────────────────────────────
+FROM python:3.12-slim
 
-    WORKDIR /app
+WORKDIR /app
 
-    # curl is required for the container HEALTHCHECK below
-    RUN apt-get update && apt-get install -y --no-install-recommends \
-      curl \
-      && rm -rf /var/lib/apt/lists/*
+# curl is required for the container HEALTHCHECK below
+RUN apt-get update && apt-get install -y --no-install-recommends \
+  curl \
+  && rm -rf /var/lib/apt/lists/*
 
-    RUN addgroup --system vituser && adduser --system --group vituser
+RUN addgroup --system vituser && adduser --system --group vituser
 
-    COPY --from=builder /usr/local/lib/python3.12/site-packages /usr/local/lib/python3.12/site-packages
-    COPY --from=builder /usr/local/bin /usr/local/bin
+COPY --from=builder /usr/local/lib/python3.12/site-packages /usr/local/lib/python3.12/site-packages
+COPY --from=builder /usr/local/bin /usr/local/bin
 
-    COPY app /app/app
+COPY app /app/app
 
-    # Copy seeded model artifacts from builder stage
-    COPY --from=builder /app/models /app/models
+# Layer 1: Copy pre-committed .pkl files from the repo (fastest, always present)
+COPY models /app/models
 
-    RUN chown -R vituser:vituser /app
+# Layer 2: Overlay with freshly seeded artifacts from builder (overrides if seed succeeded)
+COPY --from=builder /app/models /app/models
 
-    USER vituser
+RUN chown -R vituser:vituser /app
 
-    ENV PORT=8000
-    ENV PYTHONUNBUFFERED=1
-    ENV MODEL_DIR=/app/models
+USER vituser
 
-    EXPOSE 8000
+ENV PORT=8000
+ENV PYTHONUNBUFFERED=1
+ENV MODEL_DIR=/app/models
 
-    HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
-      CMD curl -f http://localhost:${PORT}/health || exit 1
+EXPOSE 8000
 
-    # Shell form so $PORT expands at runtime — Render injects PORT dynamically;
-    # hardcoding 8000 in exec form caused the health-check port mismatch.
-    CMD ["sh", "-c", "uvicorn app.main:app --host 0.0.0.0 --port ${PORT:-8000}"]
-    
+HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
+  CMD curl -f http://localhost:${PORT}/health || exit 1
+
+# Shell form so $PORT expands at runtime — Render injects PORT dynamically;
+# hardcoding 8000 in exec form caused the health-check port mismatch.
+CMD ["sh", "-c", "uvicorn app.main:app --host 0.0.0.0 --port ${PORT:-8000}"]
