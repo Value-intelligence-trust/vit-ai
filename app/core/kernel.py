@@ -8,13 +8,15 @@ class AIKernel:
     def __init__(self):
         self.status = "operational"
         self.providers = settings.SUPPORTED_PROVIDERS
-        self.loaded_models = []
 
     def get_status(self) -> Dict[str, Any]:
+        # Import here to avoid circular import; use the shared singleton registry
+        from app.services.registry import registry
+        loaded = registry.loaded_model_count()
         return {
             "status": self.status,
             "version": settings.VERSION,
-            "loaded_models_count": len(self.loaded_models)
+            "loaded_models_count": loaded,
         }
 
     def get_providers(self) -> List[str]:

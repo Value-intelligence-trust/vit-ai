@@ -7,7 +7,8 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from app.api.endpoints import router
 from app.core.config import settings
-from app.services.registry import ModelRegistry
+# Import the module-level singleton so lifespan and endpoints share the same instance
+from app.services.registry import registry as model_registry
 
 logging.basicConfig(
   level=getattr(logging, settings.LOG_LEVEL.upper(), logging.INFO),
@@ -15,26 +16,20 @@ logging.basicConfig(
 )
 logger = logging.getLogger("vit-ai")
 
-# Process-wide singleton registry
-_registry: ModelRegistry = None
 
-
-def get_registry() -> ModelRegistry:
+def get_registry():
   """Return the process-wide ModelRegistry singleton."""
-  return _registry
+  return model_registry
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-  global _registry
-
   logger.info("VIT AI Service v%s starting up…", settings.APP_VERSION)
   logger.info("MODEL_DIR=%s  VIT_STORAGE_URL=%s", settings.MODEL_DIR, settings.VIT_STORAGE_URL)
 
-  _registry = ModelRegistry()
-
-  # Bootstrap and load all 13+ VIT ensemble models from MODEL_DIR
-  loaded = _registry.bootstrap_vit_models()
+  # Bootstrap all 16 VIT ensemble models into the module-level registry singleton.
+  # endpoints.py imports this same singleton so models are immediately visible.
+  loaded = model_registry.bootstrap_vit_models()
   app.state.models_loaded = loaded
 
   if loaded == 0:
