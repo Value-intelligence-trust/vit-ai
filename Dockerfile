@@ -21,11 +21,12 @@ COPY app /app/app
 COPY scripts /app/scripts
 
 # Seed all 16 VIT ensemble model artifacts at build time.
-# This guarantees models are loadable regardless of committed .pkl state and
-# ensures elo_v1/poisson_v1 are pickled with the canonical RatingShim class
-# importable from app.services.rating_shim.
+# PYTHONPATH=/app ensures "from app.services.rating_shim import RatingShim"
+# resolves correctly when the seed script runs inside the build context.
+# The seed step exits non-zero on failure so a broken image is never pushed.
 ENV MODEL_DIR=/app/models
-RUN python scripts/seed_models.py
+ENV PYTHONPATH=/app
+RUN python /app/scripts/seed_models.py
 
 RUN chown -R vituser:vituser /app
 
