@@ -13,12 +13,19 @@ RUN pip install --no-cache-dir --upgrade pip && \
 
 RUN addgroup --system vituser && adduser --system --group vituser
 
-# Application source
+# Application source (must be copied before seed_models.py so the import
+# of app.services.rating_shim resolves correctly at build time)
 COPY app /app/app
 
-# Pre-committed VIT ensemble model artifacts (16 .pkl files seeded by scripts/seed_models.py)
-# Committed to the repo so the Docker build never relies on a live seed step.
-COPY models /app/models
+# Seed scripts
+COPY scripts /app/scripts
+
+# Seed all 16 VIT ensemble model artifacts at build time.
+# This guarantees models are loadable regardless of committed .pkl state and
+# ensures elo_v1/poisson_v1 are pickled with the canonical RatingShim class
+# importable from app.services.rating_shim.
+ENV MODEL_DIR=/app/models
+RUN python scripts/seed_models.py
 
 RUN chown -R vituser:vituser /app
 
