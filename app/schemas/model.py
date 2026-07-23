@@ -21,11 +21,13 @@ class ModelVersion(ModelVersionBase):
 class ModelBase(BaseModel):
     id: str
     name: str
-    description: str
-    capabilities: List[str]
-    provider: str
-    input_schema: Dict[str, Any]
-    output_schema: Dict[str, Any]
+    description: str = ""
+    # Optional fields — not required for internal VIT models loaded from disk
+    model_type: Optional[str] = None
+    capabilities: List[str] = []
+    provider: str = "vit-internal"
+    input_schema: Dict[str, Any] = {}
+    output_schema: Dict[str, Any] = {}
 
 class Model(ModelBase):
     versions: List[ModelVersion] = []
